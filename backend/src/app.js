@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import healthRoute from './routes/health.route.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import pool from './config/db.js';
+import redis from './config/redis.js';
 
 // Load env variables
 dotenv.config();
@@ -18,12 +19,21 @@ app.use(express.json()); // Parse JSON bodies
 // Routes
 app.use('/', healthRoute);
 
-// Test DB Connection on Startup
+// Test DB Connections on Startup
 const startServer = async () => {
   try {
+    // 1. PostgreSQL Connection
     const client = await pool.connect();
     console.log('Connected to PostgreSQL');
     client.release(); // Release client back to the pool
+
+    // 2. Redis Connection
+    try {
+      await redis.connect(); // Actually triggers connection because lazyConnect is true
+    } catch (redisError) {
+      console.error('Redis connection failed:', redisError.message);
+      process.exit(1);
+    }
 
     app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
